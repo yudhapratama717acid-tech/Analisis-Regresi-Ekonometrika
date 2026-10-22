@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regression Studio — Analisis Regresi Berbasis Covariance & SSCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script>
+        window.MathJax = { chtml: { scale: 1.0 } };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <header class="app-header">
+            <span class="eyebrow"><span class="dot"></span>Regression Studio</span>
+            <h1>Analisis Regresi &amp; <em>Ekonometrika</em></h1>
+            <p>Platform interaktif untuk Single &amp; Multiple Linear Regression berbasis matriks kovarians dan SSCP, lengkap dengan visualisasi dan panduan perhitungan manual.</p>
+            <div class="hero-tags">
+                <span>Covariance &amp; SSCP</span>
+                <span>Uji Signifikansi</span>
+                <span>Plot 2D / 3D</span>
+                <span>Simulasi Prediksi</span>
+            </div>
+        </header>
+
+        <main class="main-container">
+            <section class="card control-card full-width">
+                <h2><span class="step-badge">1</span> Unggah Sumber Data &amp; Konfigurasi</h2>
+                <p class="section-desc">Pilih berkas CSV, lalu tentukan variabel dependen dan independen.</p>
+
+                <div class="upload-row">
+                    <div class="file-input-wrapper">
+                        <div class="dropzone" id="dropzone">
+                            <div class="dz-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+                            </div>
+                            <div>
+                                <span class="dz-title" id="dzTitle">Seret berkas CSV ke sini atau klik untuk memilih</span>
+                                <span class="dz-sub" id="dzSub">Format yang didukung: .csv</span>
+                            </div>
+                        </div>
+                        <input type="file" id="csvFile" accept=".csv">
+                    </div>
+                    <button id="uploadBtn" class="btn btn-primary">Muat Dataset CSV</button>
+                </div>
+
+                <div id="variableSelection" class="hidden selection-container">
+                    <div class="selection-grid">
+                        <div class="select-box">
+                            <label for="ySelect"><strong>Variabel Dependen (Y)</strong></label>
+                            <select id="ySelect" class="form-select"></select>
+                        </div>
+                        <div class="select-box">
+                            <label><strong>Variabel Independen (X) — pilih satu atau lebih</strong></label>
+                            <div id="xCheckboxContainer" class="checkbox-list"></div>
+                        </div>
+                    </div>
+                    <button id="runAnalysisBtn" class="btn btn-success mt-4">Jalankan Analisis &amp; Hitung Model</button>
+                </div>
+            </section>
+
+            <div id="resultsContainer" class="hidden">
+                <!-- ROW 1: Editor Data & Visualisasi -->
+                <div class="row-grid">
+                    <section class="card" id="dataEditorCard">
+                        <h2><span class="step-badge">1.5</span> Editor Data</h2>
+                        <p class="section-desc">Ubah angka pada sel mana pun, hasil analisis diperbarui otomatis.</p>
+                        <div class="table-container medium-table">
+                            <table id="editableDataTable" class="data-table">
+                               <thead></thead>
+                               <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card" id="plotCard">
+                        <h2><span class="step-badge">5</span> Visualisasi &amp; Scatter Plot</h2>
+                        <p class="section-desc">Sebaran data aktual beserta garis atau bidang regresi.</p>
+                        <div id="axisControls" class="axis-controls hidden">
+                            <div class="axis-field">
+                                <label for="axisXSelect">Sumbu X</label>
+                                <select id="axisXSelect" class="form-select"></select>
+                            </div>
+                            <button type="button" id="axisSwapBtn" class="axis-swap" title="Tukar Sumbu X &amp; Y" aria-label="Tukar Sumbu X dan Y">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>
+                            </button>
+                            <div class="axis-field">
+                                <label for="axisYSelect">Sumbu Y</label>
+                                <select id="axisYSelect" class="form-select"></select>
+                            </div>
+                            <div class="axis-field">
+                                <label for="axisZField">Sumbu Z</label>
+                                <input type="text" id="axisZField" class="axis-locked" readonly tabindex="-1" title="Sumbu Z selalu variabel dependen (Y)">
+                            </div>
+                            <button type="button" id="resetCameraBtn" class="axis-reset">Reset Kamera</button>
+                        </div>
+                        <div id="plotContainer" style="height: 480px; width: 100%;"></div>
+                    </section>
+                </div>
+
+                <!-- ROW 2: Tabel Perhitungan -->
+                <section class="card full-width">
+                    <h2><span class="step-badge">7</span> Rincian Tabel Perhitungan (Covariance &amp; SSCP)</h2>
+                    <p class="section-desc">Deviasi, jumlah kuadrat ($SS$), perkalian silang ($SP$), $\hat{Y}$, dan residual.</p>
+                    <div class="table-container-scrollable-650">
+                        <table id="calcTable" class="data-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ROW 3: Simulasi & Panduan -->
+                <div class="row-grid-asymmetric">
+                    <section class="card" id="sliderSection">
+                        <h2><span class="step-badge">6</span> Simulasi Prediksi Nilai Y</h2>
+                        <p class="section-desc">Geser nilai $X$ untuk melihat estimasi $Y$ secara real-time.</p>
+                        <div id="sliderContainer" class="slider-grid-compact"></div>
+                        <div class="prediction-banner">
+                            <span class="pred-label">Persamaan Regresi &amp; Korelasi (R)</span>
+                            <div id="liveEquationVal" class="live-eq">-</div>
+                            <div id="liveRVal" class="live-r">-</div>
+                            <span class="pred-label">Hasil Prediksi Estimasi Y</span>
+                            <h3 id="predictedYVal">0.0000</h3>
+                        </div>
+                    </section>
+
+                    <section class="card" id="manualExplanationCard">
+                        <h2><span class="step-badge">8</span> Panduan Cara Menghitung Koefisien dari Tabel</h2>
+                        <div id="manualExplanationContent" class="explanation-box-full"></div>
+                    </section>
+                </div>
+
+                <!-- ROW 4: Heatmap & Ringkasan -->
+                <div class="row-grid">
+                    <section class="card">
+                        <h2><span class="step-badge">9</span> Heatmap Matriks Korelasi</h2>
+                        <p class="section-desc">Peta panas hubungan antar variabel lengkap dengan label angka.</p>
+                        <div id="heatmapContainer" style="width:100%; height:400px;"></div>
+                    </section>
+
+                    <section class="card metrics-card">
+                        <h2><span class="step-badge">2</span> Ringkasan Performa Model</h2>
+                        <div class="metrics-grid">
+                            <div class="metric-item">
+                                <span class="metric-label">Jenis Model</span>
+                                <h3 id="modelTypeVal">-</h3>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">R-Squared ($R^2$)</span>
+                                <h3 id="r2Val">-</h3>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Adjusted $R^2$</span>
+                                <h3 id="adjR2Val">-</h3>
+                            </div>
+                        </div>
+                        <div class="sub-block">
+                            <h2><span class="step-badge">10</span> Statistik Deskriptif</h2>
+                            <div class="table-container" style="max-height: 260px;">
+                                <table id="descTable" class="data-table">
+                                    <thead><tr><th>Statistik</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ROW 5: Koefisien & Kovarians -->
+                <div class="row-grid">
+                    <section class="card">
+                        <h2><span class="step-badge">3</span> Estimasi Koefisien &amp; Uji Signifikansi</h2>
+                        <p class="section-desc">Koefisien, standard error, t-statistic, dan p-value tiap variabel.</p>
+                        <div class="table-container">
+                            <table id="regressionTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Variabel</th>
+                                        <th>Koefisien ($\beta$)</th>
+                                        <th>Standard Error</th>
+                                        <th>t-Statistic</th>
+                                        <th>p-Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card hidden" id="covCard">
+                        <h2><span class="step-badge">4</span> Matriks Varians-Kovarians ($S_{XX}$)</h2>
+                        <p class="section-desc">Dasar perhitungan koefisien regresi.</p>
+                        <div class="table-container">
+                            <table id="covTable" class="data-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">Dibangun dengan <b>Flask</b> · <b>Plotly</b> · <b>MathJax</b></footer>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

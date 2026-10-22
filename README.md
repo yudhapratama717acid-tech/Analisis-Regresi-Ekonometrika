@@ -1,1 +1,1 @@
-# Analisis-Regresi-Ekonometrika
+# Aplikasi Regresi Manual Flask
