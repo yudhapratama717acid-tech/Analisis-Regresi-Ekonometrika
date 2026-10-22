@@ -1,1 +1,0 @@
-# Aplikasi Regresi Manual Flask
